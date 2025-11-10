@@ -1,0 +1,27 @@
+# Gmail API
+google-api-python-client==2.108.0
+google-auth-httplib2==0.1.1
+google-auth-oauthlib==1.1.0
+
+# OCR
+pytesseract==0.3.10
+Pillow==10.1.0
+pdf2image==1.16.3
+
+# PDF Processing
+PyPDF2==3.0.1
+pypdf==3.17.0
+
+# Spreadsheet
+gspread==5.12.0
+openpyxl==3.1.2
+pandas==2.1.4
+
+# Utilities
+python-dotenv==1.0.0
+dateparser==1.2.0
+regex==2023.12.25
+
+# API (optional - for api_example.py)
+flask==3.0.0
+
