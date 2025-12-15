@@ -27,28 +27,68 @@ class AIReceiptParser:
     - Tax information
     """
 
-    # System prompt for the LLM
-    SYSTEM_PROMPT = """You are an expert at extracting structured information from receipt and invoice text.
-Your task is to analyze the provided text and extract key fields in JSON format.
-Always respond with valid JSON only, no additional text or explanation.
-If a field cannot be found, use null for that field.
-For dates, use YYYY-MM-DD format.
-For amounts, use decimal numbers without currency symbols."""
+    # Enhanced system prompt for insurance claims and medical receipts
+    SYSTEM_PROMPT = """You are an expert at extracting structured data from insurance claims, medical invoices, and healthcare receipts.
 
-    # User prompt template
-    EXTRACTION_PROMPT_TEMPLATE = """Extract the following fields from this receipt/invoice text:
-- event_date: The date when the purchase/transaction occurred
-- submission_date: The date when the claim/receipt was submitted (if different from event date)
-- claim_amount: The total amount to be claimed (usually the final total)
-- invoice_number: The invoice or receipt number
-- policy_number: Any policy or account number
-- vendor: The merchant or vendor name
-- tax: Tax amount if present
+EXPERTISE AREAS:
+- Distinguishing between Event Date (when service occurred) and Submission Date (when billed)
+- Identifying claim amounts vs. line items
+- Recognizing invoice/claim numbers vs. policy/member IDs
+- Extracting medical provider information
 
-Receipt text:
+KEY RULES:
+- Event Date is when the medical service/treatment occurred (look for "Date of Service", "DOS", "Visit Date")
+- Submission Date is when the claim/invoice was created (look for "Invoice Date", "Claim Date")
+- Claim Amount is the FINAL total, not subtotals
+- Invoice Number is the document reference (INV-xxx, CLM-xxx, etc.)
+- Policy Number is the insurance identifier (POL-xxx, Member ID, etc.)
+
+Always return valid JSON with exact field names. Use null for missing/unclear fields."""
+
+    # Enhanced user prompt template
+    EXTRACTION_PROMPT_TEMPLATE = """Extract the following fields from this insurance claim/medical receipt:
+
+CRITICAL FIELDS (priority order):
+
+1. **event_date** (YYYY-MM-DD):
+   - Date when medical service/treatment was provided
+   - Search for: "Date of Service", "Service Date", "DOS", "Treatment Date", "Visit Date", "Procedure Date"
+   - This is NOT the invoice/bill creation date
+   - Example: "DOS: 01/15/2024" → "2024-01-15"
+
+2. **submission_date** (YYYY-MM-DD):
+   - Date when invoice/claim was created or submitted
+   - Search for: "Invoice Date", "Bill Date", "Claim Date", "Date" (at document top), "Billing Date"
+   - Usually the more recent date if multiple dates exist
+   - Example: "Invoice Date: 01/20/2024" → "2024-01-20"
+
+3. **claim_amount** (number only):
+   - Total amount being claimed/charged
+   - Search for: "Total", "Amount Due", "Balance Due", "Total Charges", "Claim Amount", "Grand Total"
+   - Use the FINAL total amount, not subtotals or line items
+   - Remove all currency symbols ($, €, £, etc.)
+   - Example: "Total: $150.00" → 150.00
+
+4. **invoice_number** (string):
+   - Unique invoice or claim reference number
+   - Search for: "Invoice #", "Invoice No.", "Invoice Number", "Claim #", "Bill #", "Reference #", "Document #"
+   - Format: Alphanumeric code (INV-12345, CLM2024001, B-001234, etc.)
+   - Example: "Invoice #: INV-2024-0015" → "INV-2024-0015"
+
+5. **policy_number** (string):
+   - Insurance policy number or member/subscriber ID
+   - Search for: "Policy #", "Policy Number", "Member ID", "Subscriber ID", "Insurance #", "Account #", "Patient ID"
+   - Usually a long alphanumeric code
+   - Example: "Member ID: POL-123456789" → "POL-123456789"
+
+OPTIONAL FIELDS:
+- vendor: Medical provider/clinic/hospital name (first provider name mentioned)
+- tax: Tax amount if listed separately (numeric, no symbols)
+
+DOCUMENT TEXT:
 {text}
 
-Respond with JSON in this exact format:
+Return ONLY valid JSON (no explanations, no markdown):
 {{
   "event_date": "YYYY-MM-DD or null",
   "submission_date": "YYYY-MM-DD or null",
@@ -57,7 +97,13 @@ Respond with JSON in this exact format:
   "policy_number": "string or null",
   "vendor": "string or null",
   "tax": number or null
-}}"""
+}}
+
+VALIDATION RULES:
+- All dates must be in YYYY-MM-DD format
+- All amounts must be numeric only (no $, €, £, or other symbols)
+- If a field is not found, use null
+- event_date should typically be earlier than or equal to submission_date"""
 
     def __init__(self, vllm_client: Optional[VLLMClient] = None, use_fallback: bool = True):
         """
@@ -86,15 +132,29 @@ Respond with JSON in this exact format:
 
         self.invoice_patterns = [
             r'Invoice\s*#?\s*:?\s*([A-Z0-9-]+)',
+            r'Claim\s*#?\s*:?\s*([A-Z0-9-]+)',
+            r'Bill\s*#?\s*:?\s*([A-Z0-9-]+)',
             r'Receipt\s*#?\s*:?\s*([A-Z0-9-]+)',
-            r'Order\s*#?\s*:?\s*([A-Z0-9-]+)',
-            r'Reference\s*:?\s*([A-Z0-9-]+)',
+            r'Reference\s*#?\s*:?\s*([A-Z0-9-]+)',
+            r'Invoice\s+No\.?\s*:?\s*([A-Z0-9-]+)',
         ]
 
         self.policy_patterns = [
             r'Policy\s*#?\s*:?\s*([A-Z0-9-]+)',
+            r'Policy\s+Number\s*:?\s*([A-Z0-9-]+)',
+            r'Member\s+ID\s*:?\s*([A-Z0-9-]+)',
+            r'Subscriber\s+ID\s*:?\s*([A-Z0-9-]+)',
+            r'Insurance\s*#?\s*:?\s*([A-Z0-9-]+)',
             r'Account\s*#?\s*:?\s*([A-Z0-9-]+)',
-            r'Member\s*#?\s*:?\s*([A-Z0-9-]+)',
+        ]
+
+        # Enhanced date patterns for medical/insurance documents
+        self.event_date_patterns = [
+            r'Date\s+of\s+Service\s*:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',
+            r'Service\s+Date\s*:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',
+            r'DOS\s*:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',
+            r'Treatment\s+Date\s*:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',
+            r'Visit\s+Date\s*:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',
         ]
 
     def set_vllm_client(self, client: VLLMClient):
