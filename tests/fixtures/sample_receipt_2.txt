@@ -1,0 +1,28 @@
+TARGET STORE #1234
+456 Oak Avenue
+Austin, TX 78701
+(512) 555-9876
+
+Transaction Date: March 15, 2024
+Time: 09:45 AM
+Receipt #: T1234567890
+
+ITEMS:
+Widget A (2 @ $15.99)          $31.98
+Widget B                       $24.99
+Widget C - SALE                $19.99
+    Regular Price: $29.99
+    You Saved: $10.00
+Service Fee                     $2.50
+
+SUBTOTAL:                      $79.46
+MEMBER DISCOUNT (10%):         -$7.95
+SALES TAX (8.25%):             $5.90
+TOTAL:                        $77.41
+
+Payment Method: Credit Card
+Card: VISA ****5678
+Auth Code: 987654
+
+Thank you for shopping at Target!
+REDcard holders save 5% every day

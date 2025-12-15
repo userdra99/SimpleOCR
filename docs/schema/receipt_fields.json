@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Receipt Extraction Schema",
+  "description": "JSON schema for extracting key fields from insurance receipt/invoice images using Qwen2-VL-7B-Instruct",
+  "type": "object",
+  "required": ["event_date", "submission_date", "claim_amount", "invoice_number", "policy_number"],
+  "properties": {
+    "event_date": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "ISO-8601 date format (YYYY-MM-DD) of when the event/service occurred",
+      "examples": ["2024-03-15", "2023-12-01"],
+      "validation_rules": {
+        "must_be_past_date": true,
+        "max_years_back": 5,
+        "cannot_be_future": true
+      }
+    },
+    "submission_date": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "ISO-8601 date format (YYYY-MM-DD) of when the claim/invoice was submitted",
+      "examples": ["2024-03-20", "2024-01-15"],
+      "validation_rules": {
+        "must_be_past_or_today": true,
+        "must_be_after_or_equal_event_date": true,
+        "max_days_after_event": 365
+      }
+    },
+    "claim_amount": {
+      "type": "object",
+      "required": ["value", "currency"],
+      "properties": {
+        "value": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Numeric value of the claim amount",
+          "examples": [125.50, 1500.00, 89.99]
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$",
+          "description": "ISO-4217 three-letter currency code",
+          "examples": ["USD", "EUR", "GBP", "CAD"],
+          "default": "USD"
+        },
+        "formatted": {
+          "type": "string",
+          "description": "Human-readable formatted amount",
+          "examples": ["$125.50", "€1,500.00", "£89.99"]
+        }
+      },
+      "validation_rules": {
+        "min_amount": 0.01,
+        "max_reasonable_amount": 100000,
+        "decimal_places": 2,
+        "must_match_total_if_itemized": true
+      }
+    },
+    "invoice_number": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 50,
+      "pattern": "^[A-Z0-9\\-\\/]+$",
+      "description": "Alphanumeric invoice or receipt number with common separators",
+      "examples": ["INV-2024-001234", "RCT/2024/5678", "A123456", "INV202401234"],
+      "validation_rules": {
+        "normalize_separators": true,
+        "uppercase_letters": true,
+        "remove_spaces": true,
+        "must_be_unique": true
+      }
+    },
+    "policy_number": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 30,
+      "pattern": "^[A-Z0-9\\-]+$",
+      "description": "Insurance policy number identifier",
+      "examples": ["POL-2024-ABC123", "P123456789", "INS-A1B2C3D4"],
+      "validation_rules": {
+        "normalize_separators": true,
+        "uppercase_letters": true,
+        "remove_spaces": true,
+        "verify_against_policy_db": true
+      }
+    },
+    "_metadata": {
+      "type": "object",
+      "description": "Extraction metadata for quality assurance and debugging",
+      "properties": {
+        "extraction_timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO-8601 timestamp of when extraction occurred"
+        },
+        "model_version": {
+          "type": "string",
+          "description": "Version of Qwen model used",
+          "examples": ["Qwen2-VL-7B-Instruct"]
+        },
+        "confidence_scores": {
+          "type": "object",
+          "properties": {
+            "event_date": {"type": "number", "minimum": 0, "maximum": 1},
+            "submission_date": {"type": "number", "minimum": 0, "maximum": 1},
+            "claim_amount": {"type": "number", "minimum": 0, "maximum": 1},
+            "invoice_number": {"type": "number", "minimum": 0, "maximum": 1},
+            "policy_number": {"type": "number", "minimum": 0, "maximum": 1},
+            "overall": {"type": "number", "minimum": 0, "maximum": 1}
+          }
+        },
+        "extraction_method": {
+          "type": "string",
+          "enum": ["qwen_vl", "regex_fallback", "manual_review"],
+          "description": "Method used for extraction"
+        },
+        "requires_manual_review": {
+          "type": "boolean",
+          "description": "Flag for human review if confidence is low"
+        },
+        "processing_time_ms": {
+          "type": "number",
+          "description": "Time taken for extraction in milliseconds"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "field_confidence_threshold": {
+      "high": 0.90,
+      "medium": 0.70,
+      "low": 0.50,
+      "manual_review_required": 0.50
+    },
+    "validation_levels": {
+      "strict": "Production environment - all validations enforced",
+      "moderate": "Development environment - key validations only",
+      "permissive": "Testing environment - log warnings only"
+    }
+  }
+}

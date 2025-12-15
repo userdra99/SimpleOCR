@@ -1,67 +1,40 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
 # Virtual Environment
 venv/
 env/
-ENV/
-.venv
+*.pyc
+__pycache__/
+
+# Gmail API Credentials
+credentials.json
+token.json
+
+# Output Files
+receipts.json
+receipts.csv
+*.xlsx
+
+# Temporary Files
+temp_attachments/
+*.tmp
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
-
-# Gmail API Credentials
-credentials.json
-token.json
-*.json.enc
-
-# Google Sheets Credentials
-sheets_credentials.json
-
-# Output files
-receipts.json
-receipts.csv
-*.csv
-*.xlsx
-
-# Temporary files
-temp_attachments/
-*.tmp
-*.log
-
-# Environment variables
-.env
-.env.local
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Claude Code
-.claude/
-.claude-flow/
+# Environment
+.env
+
+# Hive Mind Coordination (not source code)
+.hive-mind/
 .swarm/
 
+# Python
+*.egg-info/
+dist/
+build/

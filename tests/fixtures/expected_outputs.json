@@ -1,0 +1,60 @@
+{
+  "sample_receipt_1": {
+    "vendor": "Whole Foods Market",
+    "date": "2024-03-15",
+    "total": 87.43,
+    "subtotal": 81.23,
+    "tax": 6.20,
+    "items": [
+      {"name": "ORGANIC BANANAS", "price": 3.99},
+      {"name": "AVOCADOS (3)", "price": 5.97},
+      {"name": "GREEK YOGURT", "price": 4.99},
+      {"name": "ALMOND MILK", "price": 6.49},
+      {"name": "MIXED GREENS", "price": 4.99},
+      {"name": "WHOLE WHEAT BREAD", "price": 3.99},
+      {"name": "FREE RANGE EGGS", "price": 7.99},
+      {"name": "ORGANIC COFFEE", "price": 14.99},
+      {"name": "SPARKLING WATER", "price": 8.99},
+      {"name": "OLIVE OIL", "price": 12.99},
+      {"name": "DARK CHOCOLATE", "price": 4.99}
+    ],
+    "payment_method": "VISA ending in 1234",
+    "location": "San Francisco, CA"
+  },
+  "sample_receipt_2": {
+    "vendor": "TARGET",
+    "date": "2024-03-15",
+    "total": 77.41,
+    "subtotal": 79.46,
+    "tax": 5.90,
+    "discount": 7.95,
+    "items": [
+      {"name": "Widget A", "price": 31.98, "quantity": 2, "unit_price": 15.99},
+      {"name": "Widget B", "price": 24.99},
+      {"name": "Widget C", "price": 19.99, "sale": true, "original_price": 29.99, "savings": 10.00},
+      {"name": "Service Fee", "price": 2.50}
+    ],
+    "payment_method": "Credit Card VISA ****5678",
+    "location": "Austin, TX"
+  },
+  "sample_receipt_3": {
+    "vendor": "Starbucks Coffee",
+    "date": "2024-03-15",
+    "total": 11.11,
+    "subtotal": 10.20,
+    "tax": 0.91,
+    "items": [
+      {"name": "Grande Latte", "price": 5.45},
+      {"name": "Add Extra Shot", "price": 0.80},
+      {"name": "Blueberry Muffin", "price": 3.95}
+    ],
+    "payment_method": "Mobile App",
+    "location": "Seattle, WA",
+    "rewards": "11 stars earned"
+  },
+  "sample_receipt_minimal": {
+    "vendor": "Coffee Shop",
+    "date": "2024-03-15",
+    "total": 5.50
+  }
+}

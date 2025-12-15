@@ -1,0 +1,31 @@
+WHOLE FOODS MARKET
+123 Main Street
+San Francisco, CA 94102
+Tel: (415) 555-0123
+
+Date: 03/15/2024
+Time: 14:32:15
+Register: 5
+Cashier: Sarah M.
+
+ORGANIC BANANAS          3.99
+AVOCADOS (3)            5.97
+GREEK YOGURT            4.99
+ALMOND MILK             6.49
+MIXED GREENS            4.99
+WHOLE WHEAT BREAD       3.99
+FREE RANGE EGGS         7.99
+ORGANIC COFFEE         14.99
+SPARKLING WATER         8.99
+OLIVE OIL              12.99
+DARK CHOCOLATE          4.99
+
+SUBTOTAL:              81.23
+TAX (7.5%):             6.20
+TOTAL:                 87.43
+
+VISA ending in 1234
+AUTH: 123456
+
+Thank you for shopping!
+Visit us at www.wholefoods.com

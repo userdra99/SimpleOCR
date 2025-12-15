@@ -1,0 +1,22 @@
+Starbucks Coffee #2345
+789 Market Street
+Seattle, WA 98101
+
+Date: 03/15/2024 10:23 AM
+
+Order #: 12345
+Barista: Mike
+
+Grande Latte                    5.45
+Add Extra Shot                  0.80
+Blueberry Muffin               3.95
+
+Subtotal:                      10.20
+Tax:                           0.91
+TOTAL:                        11.11
+
+Payment: Mobile App
+Rewards Stars Earned: 11
+
+Thank you!
+Visit starbucks.com/rewards

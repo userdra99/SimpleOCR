@@ -13,6 +13,14 @@ from receipt_parser import ReceiptParser
 from spreadsheet_writer import DataWriter
 import config
 
+# AI imports (optional)
+try:
+    from src.vllm_client import VLLMClient, VLLMClientError
+    from src.ai_receipt_parser import AIReceiptParser
+    AI_AVAILABLE = True
+except ImportError:
+    AI_AVAILABLE = False
+
 
 def main():
     """Main function to orchestrate the receipt extraction process"""
@@ -44,7 +52,18 @@ def main():
         default=None,
         help='Output file path (default: from config)'
     )
-    
+    parser.add_argument(
+        '--use-ai',
+        action='store_true',
+        help='Use AI-powered extraction via vLLM (requires vLLM server running)'
+    )
+    parser.add_argument(
+        '--vllm-url',
+        type=str,
+        default=None,
+        help='vLLM server URL (default: from config or http://localhost:8000)'
+    )
+
     args = parser.parse_args()
     
     # Override config with command line arguments
@@ -69,6 +88,46 @@ def main():
     ocr_processor = OCRProcessor()
     receipt_parser = ReceiptParser()
     data_writer = DataWriter()
+
+    # Initialize AI parser if requested
+    ai_parser = None
+    vllm_client = None
+    if args.use_ai or config.VLLM_ENABLED:
+        if not AI_AVAILABLE:
+            print("WARNING: AI extraction requested but AI modules not available")
+            print("Install dependencies: pip install aiohttp tenacity")
+            print("Falling back to regex-only extraction")
+        else:
+            try:
+                vllm_url = args.vllm_url or config.VLLM_SERVER_URL
+                print(f"Initializing vLLM client at {vllm_url}...")
+
+                vllm_client = VLLMClient(
+                    server_url=vllm_url,
+                    model_name=config.VLLM_MODEL_NAME,
+                    timeout=config.VLLM_TIMEOUT,
+                    max_retries=config.VLLM_MAX_RETRIES,
+                    max_tokens=config.VLLM_MAX_TOKENS,
+                    temperature=config.VLLM_TEMPERATURE
+                )
+
+                # Check server health
+                if vllm_client.check_health():
+                    print("✓ vLLM server is healthy")
+                    ai_parser = AIReceiptParser(
+                        vllm_client=vllm_client,
+                        use_fallback=config.AI_USE_FALLBACK
+                    )
+                    print("✓ AI-powered extraction enabled")
+                else:
+                    print("WARNING: vLLM server is not responding")
+                    print("Falling back to regex-only extraction")
+                    vllm_client = None
+            except Exception as e:
+                print(f"WARNING: Failed to initialize AI extraction: {e}")
+                print("Falling back to regex-only extraction")
+                vllm_client = None
+                ai_parser = None
     
     # Check if Tesseract is available
     if not ocr_processor.is_tesseract_available():
@@ -162,12 +221,48 @@ def main():
             
             # Parse receipt data
             if text_content:
-                receipt_data = receipt_parser.parse(text_content, email_data)
-                
+                # Try AI extraction first if available
+                receipt_data = None
+
+                if ai_parser:
+                    try:
+                        print(f"    Using AI extraction...")
+                        ai_fields = ai_parser.extract_fields(text_content, email_data)
+
+                        # Combine AI fields with standard parser format
+                        receipt_data = {
+                            'date': ai_fields.get('event_date') or ai_fields.get('submission_date'),
+                            'vendor': ai_fields.get('vendor'),
+                            'total': ai_fields.get('claim_amount'),
+                            'tax': ai_fields.get('tax'),
+                            'invoice_number': ai_fields.get('invoice_number'),
+                            'policy_number': ai_fields.get('policy_number'),
+                            'submission_date': ai_fields.get('submission_date'),
+                            'extraction_method': ai_fields.get('extraction_method', 'ai'),
+                            'confidence': ai_fields.get('confidence', 0.0),
+                            'raw_text': ai_fields.get('raw_text', ''),
+                            'email_subject': email_data.get('subject', ''),
+                            'email_from': email_data.get('from', ''),
+                            'email_date': email_data.get('date', ''),
+                        }
+
+                        print(f"    AI extraction confidence: {receipt_data['confidence']:.2f} ({receipt_data['extraction_method']})")
+                    except Exception as e:
+                        print(f"    AI extraction error: {e}")
+                        print(f"    Falling back to regex extraction...")
+                        receipt_data = None
+
+                # Fallback to regex parser if AI failed or not available
+                if not receipt_data:
+                    receipt_data = receipt_parser.parse(text_content, email_data)
+                    receipt_data['extraction_method'] = 'regex'
+                    receipt_data['confidence'] = 0.6
+
                 # Only add if we found meaningful data
                 if receipt_data.get('vendor') or receipt_data.get('total') or receipt_data.get('date'):
                     receipts_data.append(receipt_data)
-                    print(f"    ✓ Extracted receipt: {receipt_data.get('vendor', 'Unknown')} - ${receipt_data.get('total', 'N/A')}")
+                    total_str = f"${receipt_data.get('total', 'N/A')}" if receipt_data.get('total') else 'N/A'
+                    print(f"    ✓ Extracted receipt: {receipt_data.get('vendor', 'Unknown')} - {total_str}")
                 else:
                     print(f"    ✗ No receipt data found in email")
             else:

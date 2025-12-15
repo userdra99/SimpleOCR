@@ -1,0 +1,175 @@
+{
+  "system_prompts": {
+    "primary_extraction": {
+      "role": "receipt_data_extractor",
+      "content": "You are a specialized AI assistant for extracting structured data from receipt and invoice images. Your task is to accurately identify and extract the following fields: event_date, submission_date, claim_amount, invoice_number, and policy_number. Always respond with valid JSON format. If a field cannot be found with high confidence, mark it as null. Provide confidence scores (0-1) for each extracted field."
+    },
+    "fallback_extraction": {
+      "role": "ocr_parser",
+      "content": "You are parsing text from a receipt/invoice image. Focus on finding dates, monetary amounts, and alphanumeric identifiers. Be permissive in recognizing various formats. Extract any text that might be relevant to: dates, amounts, invoice numbers, policy numbers, or reference numbers."
+    },
+    "validation_assistant": {
+      "role": "data_validator",
+      "content": "You are validating extracted receipt data. Check for logical consistency: submission_date >= event_date, amounts are reasonable, dates are not in the future, and formats match expected patterns. Flag any anomalies or inconsistencies."
+    }
+  },
+
+  "extraction_prompts": {
+    "complete_extraction": {
+      "prompt_template": "Please analyze this receipt/invoice image and extract the following information in JSON format:\n\n1. **event_date**: The date when the service or event occurred (format: YYYY-MM-DD)\n2. **submission_date**: The date when the claim/invoice was submitted (format: YYYY-MM-DD)\n3. **claim_amount**: The total amount claimed (as {\"value\": number, \"currency\": \"CODE\"})\n4. **invoice_number**: The invoice or receipt number\n5. **policy_number**: The insurance policy number or member ID\n\nFor each field, also provide a confidence score from 0.0 to 1.0.\n\nLook for these common label variations:\n- Event date: \"Date of Service\", \"Service Date\", \"Event Date\", \"DOS\"\n- Submission date: \"Claim Date\", \"Invoice Date\", \"Filed Date\", \"Submission Date\"\n- Claim amount: \"Total\", \"Amount Due\", \"Total Amount\", \"Balance\", \"Grand Total\"\n- Invoice number: \"Invoice #\", \"Receipt #\", \"Reference\", \"Doc #\", \"Claim #\"\n- Policy number: \"Policy Number\", \"Member ID\", \"Insurance #\", \"Policy #\", \"ID Number\"\n\nRespond ONLY with valid JSON in this exact format:\n```json\n{\n  \"event_date\": \"YYYY-MM-DD or null\",\n  \"submission_date\": \"YYYY-MM-DD or null\",\n  \"claim_amount\": {\n    \"value\": 0.00,\n    \"currency\": \"USD\"\n  },\n  \"invoice_number\": \"string or null\",\n  \"policy_number\": \"string or null\",\n  \"confidence_scores\": {\n    \"event_date\": 0.0,\n    \"submission_date\": 0.0,\n    \"claim_amount\": 0.0,\n    \"invoice_number\": 0.0,\n    \"policy_number\": 0.0\n  }\n}\n```",
+      "few_shot_examples": [
+        {
+          "example_id": 1,
+          "description": "Standard medical invoice",
+          "image_content": "MEDICAL CLINIC\nDate of Service: 03/15/2024\nInvoice Date: 03/20/2024\nInvoice #: INV-2024-001234\nPolicy #: POL-2024-ABC123\nTotal Amount Due: $125.50",
+          "expected_output": {
+            "event_date": "2024-03-15",
+            "submission_date": "2024-03-20",
+            "claim_amount": {
+              "value": 125.50,
+              "currency": "USD"
+            },
+            "invoice_number": "INV-2024-001234",
+            "policy_number": "POL-2024-ABC123",
+            "confidence_scores": {
+              "event_date": 0.95,
+              "submission_date": 0.95,
+              "claim_amount": 0.98,
+              "invoice_number": 0.99,
+              "policy_number": 0.99
+            }
+          }
+        },
+        {
+          "example_id": 2,
+          "description": "European format receipt",
+          "image_content": "DENTAL SERVICES\nService Date: 15.04.2024\nClaim Filed: 18.04.2024\nReference: RCT/2024/5678\nMember ID: M987654321\nTotal: EUR 1,500.00",
+          "expected_output": {
+            "event_date": "2024-04-15",
+            "submission_date": "2024-04-18",
+            "claim_amount": {
+              "value": 1500.00,
+              "currency": "EUR"
+            },
+            "invoice_number": "RCT/2024/5678",
+            "policy_number": "M987654321",
+            "confidence_scores": {
+              "event_date": 0.92,
+              "submission_date": 0.92,
+              "claim_amount": 0.96,
+              "invoice_number": 0.95,
+              "policy_number": 0.94
+            }
+          }
+        },
+        {
+          "example_id": 3,
+          "description": "Minimal format with missing data",
+          "image_content": "PHARMACY RECEIPT\nDate: March 10, 2024\nReceipt: A123456\nTotal: $89.99",
+          "expected_output": {
+            "event_date": "2024-03-10",
+            "submission_date": "2024-03-10",
+            "claim_amount": {
+              "value": 89.99,
+              "currency": "USD"
+            },
+            "invoice_number": "A123456",
+            "policy_number": null,
+            "confidence_scores": {
+              "event_date": 0.88,
+              "submission_date": 0.65,
+              "claim_amount": 0.90,
+              "invoice_number": 0.82,
+              "policy_number": 0.00
+            }
+          }
+        }
+      ]
+    },
+
+    "field_specific_prompts": {
+      "event_date_only": {
+        "prompt": "What is the date of service or event date shown on this receipt? Look for labels like 'Date of Service', 'Service Date', 'Event Date', or 'DOS'. Respond with YYYY-MM-DD format and confidence score (0-1).",
+        "output_format": "{\"event_date\": \"YYYY-MM-DD\", \"confidence\": 0.0}"
+      },
+      "submission_date_only": {
+        "prompt": "What is the claim submission date or invoice date? Look for 'Claim Date', 'Invoice Date', 'Filed Date', or 'Submission Date'. Respond with YYYY-MM-DD format and confidence score.",
+        "output_format": "{\"submission_date\": \"YYYY-MM-DD\", \"confidence\": 0.0}"
+      },
+      "claim_amount_only": {
+        "prompt": "What is the total claim amount or total amount due? Look for 'Total', 'Amount Due', 'Balance', or 'Grand Total'. Include the currency if visible. Respond with the amount as a number and currency code.",
+        "output_format": "{\"claim_amount\": {\"value\": 0.0, \"currency\": \"USD\"}, \"confidence\": 0.0}"
+      },
+      "invoice_number_only": {
+        "prompt": "What is the invoice number, receipt number, or reference number? Look for 'Invoice #', 'Receipt #', 'Reference', 'Doc #', or 'Claim #'. Respond with the alphanumeric identifier.",
+        "output_format": "{\"invoice_number\": \"string\", \"confidence\": 0.0}"
+      },
+      "policy_number_only": {
+        "prompt": "What is the insurance policy number or member ID? Look for 'Policy Number', 'Policy #', 'Member ID', 'Insurance #', or 'ID Number'. Respond with the alphanumeric identifier.",
+        "output_format": "{\"policy_number\": \"string\", \"confidence\": 0.0}"
+      }
+    },
+
+    "edge_case_prompts": {
+      "ambiguous_dates": {
+        "prompt": "This image contains multiple dates. Identify which date represents the 'date of service' (when the event occurred) and which represents the 'invoice/submission date'. Provide both with confidence scores.",
+        "output_format": "{\"event_date\": \"YYYY-MM-DD\", \"submission_date\": \"YYYY-MM-DD\", \"event_date_confidence\": 0.0, \"submission_date_confidence\": 0.0, \"reasoning\": \"explanation\"}"
+      },
+      "multiple_amounts": {
+        "prompt": "This image shows multiple monetary amounts. Identify which is the TOTAL or final amount due (not subtotals, taxes, or partial amounts). Provide the total amount and explain your selection.",
+        "output_format": "{\"claim_amount\": {\"value\": 0.0, \"currency\": \"USD\"}, \"confidence\": 0.0, \"reasoning\": \"explanation\", \"other_amounts_found\": []}"
+      },
+      "poor_quality": {
+        "prompt": "This image appears to be of poor quality (blurry, low resolution, or faded). Extract any readable information and indicate low confidence where text is unclear. Flag fields that are completely unreadable as null.",
+        "output_format": "{\"readable_fields\": {}, \"confidence_scores\": {}, \"quality_issues\": \"description\"}"
+      },
+      "handwritten": {
+        "prompt": "This appears to be a handwritten receipt. Do your best to recognize handwritten text. Be conservative with confidence scores. Extract any machine-printed text with higher confidence.",
+        "output_format": "{\"extracted_fields\": {}, \"confidence_scores\": {}, \"handwritten_fields\": [], \"quality_note\": \"handwritten receipt\"}"
+      },
+      "non_english": {
+        "prompt": "This receipt appears to be in a non-English language. Identify the language and extract the required fields. Look for common patterns like dates (DD/MM/YYYY or YYYY-MM-DD), currency symbols, and numeric identifiers even if labels are in another language.",
+        "output_format": "{\"detected_language\": \"language_code\", \"extracted_fields\": {}, \"confidence_scores\": {}, \"translation_note\": \"field labels in original language\"}"
+      },
+      "missing_policy": {
+        "prompt": "I cannot find a policy number or member ID on this receipt. Please search thoroughly for any alphanumeric identifier that could be an insurance policy number, member ID, subscriber number, or group number. If genuinely not present, respond with null and low confidence.",
+        "output_format": "{\"policy_number\": \"string or null\", \"confidence\": 0.0, \"search_attempts\": \"description of where you looked\"}"
+      }
+    }
+  },
+
+  "validation_prompts": {
+    "cross_field_validation": {
+      "prompt_template": "Validate the following extracted data for logical consistency:\n\n{json_data}\n\nCheck:\n1. Is submission_date >= event_date?\n2. Are dates in the past (not future)?\n3. Is the claim_amount reasonable (between $0.01 and $100,000)?\n4. Do all fields follow expected formats?\n5. Are there any obvious errors or inconsistencies?\n\nRespond with validation results and any corrections needed.",
+      "output_format": "{\"is_valid\": true/false, \"errors\": [], \"warnings\": [], \"suggested_corrections\": {}}"
+    },
+    "confidence_assessment": {
+      "prompt": "Assess the overall confidence of this extraction. Are there any fields where you are uncertain? Should this document be flagged for manual review?",
+      "output_format": "{\"overall_confidence\": 0.0, \"requires_manual_review\": false, \"uncertain_fields\": [], \"reasoning\": \"explanation\"}"
+    }
+  },
+
+  "prompt_configuration": {
+    "temperature": 0.1,
+    "max_tokens": 1000,
+    "top_p": 0.95,
+    "response_format": "json_object",
+    "retry_strategy": {
+      "max_retries": 3,
+      "backoff_multiplier": 2,
+      "retry_on": ["network_error", "timeout", "invalid_json"]
+    },
+    "timeout_seconds": 10
+  },
+
+  "handling_ambiguous_data": {
+    "instructions": "When data is ambiguous or unclear:\n1. Extract the most likely value\n2. Assign a confidence score reflecting uncertainty (< 0.7)\n3. Document the ambiguity in metadata\n4. Suggest manual review if confidence < 0.5\n5. Never fabricate data - use null if truly missing"
+  },
+
+  "post_processing_rules": {
+    "date_normalization": "Convert all dates to ISO-8601 (YYYY-MM-DD) regardless of input format",
+    "amount_normalization": "Convert all amounts to decimal format with exactly 2 decimal places",
+    "text_normalization": "Convert invoice and policy numbers to uppercase, remove extra spaces and normalize separators",
+    "currency_detection": "If no currency specified, default to USD but set confidence < 0.8"
+  }
+}

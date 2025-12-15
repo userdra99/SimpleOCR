@@ -1,0 +1,74 @@
+{
+  "empty_receipt": {
+    "text": "",
+    "expected": {
+      "vendor": null,
+      "date": null,
+      "total": null
+    }
+  },
+  "no_amounts": {
+    "text": "Store Name\nDate: 2024-03-15\nThank you!",
+    "expected": {
+      "vendor": "Store Name",
+      "date": "2024-03-15",
+      "total": null
+    }
+  },
+  "invalid_date": {
+    "text": "Store\nDate: not-a-date\nTotal: $10.00",
+    "expected": {
+      "vendor": "Store",
+      "date": null,
+      "total": 10.00
+    }
+  },
+  "negative_total": {
+    "text": "Store\nDate: 2024-03-15\nTotal: -$50.00\nRefund Receipt",
+    "expected": {
+      "vendor": "Store",
+      "date": "2024-03-15",
+      "total": -50.00,
+      "is_refund": true
+    }
+  },
+  "missing_vendor": {
+    "text": "Date: 2024-03-15\nItem A: $15.00\nItem B: $10.00\nTotal: $25.00",
+    "expected": {
+      "vendor": null,
+      "date": "2024-03-15",
+      "total": 25.00
+    }
+  },
+  "unicode_mixed": {
+    "text": "咖啡店 Coffee Shop\n日期 Date: 2024-03-15\n拿铁咖啡 Latte: ¥45.00\nTotal: ¥45.00",
+    "expected": {
+      "vendor": "咖啡店 Coffee Shop",
+      "date": "2024-03-15",
+      "total": 45.00,
+      "currency": "CNY"
+    }
+  },
+  "european_format": {
+    "text": "Café Paris\nDate: 15/03/2024\nCroissant: 3,50€\nCoffee: 2,80€\nTotal: 6,30€",
+    "expected": {
+      "vendor": "Café Paris",
+      "date": "2024-03-15",
+      "total": 6.30,
+      "currency": "EUR"
+    }
+  },
+  "multi_currency": {
+    "text": "Airport Shop\nDate: 2024-03-15\nTotal USD: $25.00\nTotal EUR: €23.00\nExchange Rate: 1.087",
+    "expected": {
+      "vendor": "Airport Shop",
+      "date": "2024-03-15",
+      "total": 25.00,
+      "currency": "USD",
+      "alternate_currency": {
+        "amount": 23.00,
+        "currency": "EUR"
+      }
+    }
+  }
+}
